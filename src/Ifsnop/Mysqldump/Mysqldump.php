@@ -885,9 +885,11 @@ class Mysqldump
         $resultSet = $this->dbHandler->query($stmt);
         $resultSet->setFetchMode(PDO::FETCH_ASSOC);
 
-        foreach ($resultSet as $rowIndex => $row) {
+        $rowCount = 0;
+        foreach ($resultSet as $row) {
             if(!empty($this->dumpSettings['on-progress']))
-                call_user_func($this->dumpSettings['on-progress'], 'export-row', $rowIndex);
+                call_user_func($this->dumpSettings['on-progress'], 'export-row', $rowCount);
+            $rowCount++;
 
             if(isset($tableSettings['on-export-row']))
                 $row = call_user_func($tableSettings['on-export-row'], $row);
@@ -917,6 +919,9 @@ class Mysqldump
             }
         }
         $resultSet->closeCursor();
+
+        if(!empty($this->dumpSettings['on-progress']))
+            call_user_func($this->dumpSettings['on-progress'], 'table-end', $rowCount);
 
         if (!$onlyOnce) {
             $this->compressManager->write(";" . PHP_EOL);
