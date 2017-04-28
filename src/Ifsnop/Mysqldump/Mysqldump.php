@@ -143,7 +143,8 @@ class Mysqldump
             'skip-dump-date' => false,
             'where' => '',
             /* deprecated */
-            'disable-foreign-keys-check' => true
+            'disable-foreign-keys-check' => true,
+            'table-settings' => [],
         );
 
         $pdoSettingsDefault = array(
@@ -858,11 +859,21 @@ class Mysqldump
     {
         $this->prepareListValues($tableName);
 
+        if(isset($this->dumpSettings['table-settings'][$tableName]))
+            $tableSettings = $this->dumpSettings['table-settings'][$tableName];
+        else
+            $tableSettings = [];
+
         $onlyOnce = true;
         $lineSize = 0;
 
         $colStmt = $this->getColumnStmt($tableName);
-        $stmt = "SELECT " . implode(",", $colStmt) . " FROM `$tableName`";
+        $stmt = "SELECT " . implode(",", $colStmt);
+        if(isset($tableSettings['extra-columns']))
+            $stmt .= ", " . $tableSettings['extra-columns'];
+        $stmt .= " FROM `$tableName`";
+        if(isset($tableSettings['joins']))
+            $stmt .= " " . $tableSettings['joins'];
 
         if ($this->dumpSettings['where']) {
             $stmt .= " WHERE {$this->dumpSettings['where']}";
@@ -871,6 +882,8 @@ class Mysqldump
         $resultSet->setFetchMode(PDO::FETCH_ASSOC);
 
         foreach ($resultSet as $row) {
+            if(isset($tableSettings['on-export-row']))
+                $row = call_user_func($tableSettings['on-export-row'], $row);
             $vals = $this->escape($tableName, $row);
             if ($onlyOnce || !$this->dumpSettings['extended-insert']) {
 
@@ -1012,7 +1025,7 @@ class Mysqldump
                 $this->dumpSettings['complete-insert'] = true;
                 continue;
             } else {
-                $colStmt[] = "`${colName}`";
+                $colStmt[] = "`${tableName}`.`${colName}`";
             }
         }
 
