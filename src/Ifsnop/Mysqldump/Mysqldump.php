@@ -145,6 +145,7 @@ class Mysqldump
             /* deprecated */
             'disable-foreign-keys-check' => true,
             'table-settings' => [],
+            'on-progress' => null,
         );
 
         $pdoSettingsDefault = array(
@@ -864,6 +865,9 @@ class Mysqldump
         else
             $tableSettings = [];
 
+        if(!empty($this->dumpSettings['on-progress']))
+            call_user_func($this->dumpSettings['on-progress'], 'table-start', $tableName);
+
         $onlyOnce = true;
         $lineSize = 0;
 
@@ -881,9 +885,13 @@ class Mysqldump
         $resultSet = $this->dbHandler->query($stmt);
         $resultSet->setFetchMode(PDO::FETCH_ASSOC);
 
-        foreach ($resultSet as $row) {
+        foreach ($resultSet as $rowIndex => $row) {
+            if(!empty($this->dumpSettings['on-progress']))
+                call_user_func($this->dumpSettings['on-progress'], 'export-row', $rowIndex);
+
             if(isset($tableSettings['on-export-row']))
                 $row = call_user_func($tableSettings['on-export-row'], $row);
+
             $vals = $this->escape($tableName, $row);
             if ($onlyOnce || !$this->dumpSettings['extended-insert']) {
 
