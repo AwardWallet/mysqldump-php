@@ -832,6 +832,8 @@ class Mysqldump
         $ret = array();
         $columnTypes = $this->tableColumnTypes[$tableName];
         foreach ($row as $colName => $colValue) {
+            if(!isset($columnTypes[$colName]))
+                continue;
             if (is_null($colValue)) {
                 $ret[] = "NULL";
             } elseif ($this->dumpSettings['hex-blob'] && $columnTypes[$colName]['is_blob']) {
