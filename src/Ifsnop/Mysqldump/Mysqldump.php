@@ -897,8 +897,11 @@ class Mysqldump
                 call_user_func($this->dumpSettings['on-progress'], 'export-row', ['table' => $tableName, 'row-count' => $rowCount]);
             $rowCount++;
 
-            if(isset($tableSettings['on-export-row']))
+            if(isset($tableSettings['on-export-row'])) {
                 $row = call_user_func($tableSettings['on-export-row'], $row);
+                if($row === false)
+                    continue;
+            }
 
             $vals = $this->escape($tableName, $row);
             if ($onlyOnce || !$this->dumpSettings['extended-insert']) {
