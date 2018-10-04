@@ -180,7 +180,11 @@ class Mysqldump
         $this->dumpSettings['include-views'] = $this->dumpSettings['include-tables'];
 
         // Create a new compressManager to manage compressed output
-        $this->compressManager = CompressManagerFactory::create($this->dumpSettings['compress']);
+        if ($this->dumpSettings['compress'] instanceof CompressorInterface) {
+            $this->compressManager = $this->dumpSettings['compress'];
+        } else {
+            $this->compressManager = CompressManagerFactory::create($this->dumpSettings['compress']);
+        }
     }
 
     /**
@@ -637,6 +641,8 @@ class Mysqldump
             }
         }
         $this->tableColumnTypes[$tableName] = $this->getTableColumnTypes($tableName);
+        if(!empty($this->dumpSettings['on-progress']))
+            call_user_func($this->dumpSettings['on-progress'], 'flush', null);
         return;
     }
 
@@ -925,16 +931,20 @@ class Mysqldump
                     !$this->dumpSettings['extended-insert']) {
                 $onlyOnce = true;
                 $lineSize = $this->compressManager->write(";" . PHP_EOL);
+                if(!empty($this->dumpSettings['on-progress']))
+                    call_user_func($this->dumpSettings['on-progress'], 'flush', null);
             }
         }
         $resultSet->closeCursor();
 
-        if(!empty($this->dumpSettings['on-progress']))
-            call_user_func($this->dumpSettings['on-progress'], 'table-end', ['table' => $tableName, 'row-count' => $rowCount]);
-
         if (!$onlyOnce) {
             $this->compressManager->write(";" . PHP_EOL);
+            if(!empty($this->dumpSettings['on-progress']))
+                call_user_func($this->dumpSettings['on-progress'], 'flush', null);
         }
+
+        if(!empty($this->dumpSettings['on-progress']))
+            call_user_func($this->dumpSettings['on-progress'], 'table-end', ['table' => $tableName, 'row-count' => $rowCount]);
 
         $this->endListValues($tableName);
     }
@@ -1081,7 +1091,7 @@ abstract class CompressManagerFactory
 {
     /**
      * @param string $c
-     * @return CompressBzip2|CompressGzip|CompressNone
+     * @return Compressor
      */
     public static function create($c)
     {
@@ -1096,7 +1106,7 @@ abstract class CompressManagerFactory
     }
 }
 
-class CompressBzip2 extends CompressManagerFactory
+class CompressBzip2 implements CompressorInterface
 {
     private $fileHandler = null;
 
@@ -1134,7 +1144,7 @@ class CompressBzip2 extends CompressManagerFactory
     }
 }
 
-class CompressGzip extends CompressManagerFactory
+class CompressGzip implements CompressorInterface
 {
     private $fileHandler = null;
 
@@ -1172,7 +1182,7 @@ class CompressGzip extends CompressManagerFactory
     }
 }
 
-class CompressNone extends CompressManagerFactory
+class CompressNone implements CompressorInterface
 {
     private $fileHandler = null;
 
